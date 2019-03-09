@@ -6,7 +6,7 @@ from scipy.integrate import odeint
 class envModel:
     def __init__(self, m=[800.0, 10.0, 200.0], c=[10.0, 100.0], k=[1e5, 0.0],
                  x=[0.0, 0.2, 2.0], v=[10.0, 0.0, 0.0], F=0.0, rec=True,
-                 r=[0.1, 0.1, 0.1], t0=0.0, dt=1e-2, gamma=1.5):
+                 r=[0.1, 0.1, 0.1], t0=0.0, dt=1e-3, gamma=1.5):
         self.m, self.c, self.k, self.x, self.v, self.r, self.t0, self.dt, self.F, self.gamma, self.rec \
             = m, c, k, x, v, r, t0, dt, F, gamma, rec
         self.contact = (r[0] + r[1] > x[1] - x[0])
@@ -20,7 +20,7 @@ class envModel:
             self.info['c'] = [c]
             self.info['contact'] = [self.contact]
 
-    def set(self,c2 = 100.0, k2 = 0.0, F = 0.0, rec = True, dt = 1e-2):
+    def set(self,c2 = 100.0, k2 = 0.0, F = 0.0, rec = True, dt = 1e-3):
         self.c[1] = c2
         self.k[1] = k2
         self.F = F
