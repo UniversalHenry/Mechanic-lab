@@ -5,6 +5,9 @@ import torch.nn.functional as F
 import numpy as np
 import gym
 
+torch.manual_seed(1)
+np.random.seed(1)
+
 # Hyper Parameters
 BATCH_SIZE = 32
 LR = 0.01                   # learning rate

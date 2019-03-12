@@ -2,11 +2,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import odeint
 
+np.random.seed(1)
 
 class envModel:
     def __init__(self, m=[800.0, 10.0, 200.0], c=[10.0, 100.0], k=[1e5, 0.0],
-                 x=[0.0, 0.2, 2.0], v=[10.0, 0.0, 0.0], F=0.0, rec=True,
-                 r=[0.1, 0.1, 0.1], t0=0.0, dt=1e-3, gamma=1.5):
+                 x=[0.0, 0.35, 2.0], v=[10.0, 0.0, 0.0], F=0.0, rec=True,
+                 r=[0.25, 0.05, 0.15], t0=0.0, dt=1e-3, gamma=1.5):
         self.m, self.c, self.k, self.x, self.v, self.r, self.t0, self.dt, self.F, self.gamma, self.rec \
             = m, c, k, x, v, r, t0, dt, F, gamma, rec
         self.contact = (r[0] + r[1] > x[1] - x[0])
@@ -26,6 +27,25 @@ class envModel:
         self.F = F
         self.rec = rec
         self.dt = dt
+        print('c:',self.c,'\t|','k:',self.k,'\t|','F:',self.F,'\t|','dt:',self.dt,'\t|','t:',self.t0,)
+
+    def gen(self):
+        top_m, low_m = 2000.0, 500.0
+        top_c1, low_c1 = 100.0, 10.0
+        top_k1, low_k1 = 1e7, 1e6
+        top_gamma, low_gamma = 2.4, 1.3
+        top_v, low_v = 30, 5
+        self.m[0] = np.random.random_sample() * (top_m - low_m) + low_m
+        self.c[0] = np.random.random_sample() * (top_c1 - low_c1) + low_c1
+        self.k[0] = np.random.random_sample() * (top_k1 - low_k1) + low_k1
+        self.gamma = np.random.random_sample() * (top_gamma - low_gamma) + low_gamma
+        self.r[0] = self.r[2] * ((self.m[0] / self.m[2]) ** (1 / 3))
+        self.x = [0.0, 0.35, 2.0]
+        self.v = [np.random.random_sample() * (top_v - low_v) + low_v, 0.0, 0.0]
+        self.set()
+        print('New envModel generated!')
+        print('m:', self.m, '\t|', 'r:', self.r, '\t|', 'x:', self.x, '\t|', 'v:', self.v, '\t|', 'rec:', self.rec, )
+        print('c:', self.c, '\t|', 'k:', self.k, '\t|', 'F:', self.F, '\t|', 'dt:', self.dt, '\t|', 't:', self.t0, )
 
     def func(self, xv, t):
         m, c, k, r, gamma, F = self.m, self.c, self.k, self.r, self.gamma, self.F
