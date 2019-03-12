@@ -3,6 +3,7 @@ from torch import nn
 from torch.autograd import Variable
 import torchvision.datasets as dsets
 import torchvision.transforms as transforms
+from envModel import envModel
 import matplotlib.pyplot as plt
 
 torch.manual_seed(1)
@@ -38,7 +39,7 @@ class RNN(nn.Module):
         self.rnn = nn.LSTM(         # if use nn.RNN(), it hardly learns
             input_size=INPUT_SIZE,
             hidden_size=64,         # rnn hidden unit
-            num_layers=1,           # number of rnn layer
+            num_layers=2,           # number of rnn layer
             batch_first=True,       # input & output will has batch size as 1s dimension. e.g. (batch, time_step, input_size)
         )
 
