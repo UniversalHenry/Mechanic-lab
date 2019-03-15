@@ -10,7 +10,8 @@ class envModel:
                  r=[0.25, 0.05, 0.15], t0=0.0, dv = 0, dt=1e-3, gamma=1.5):
         self.m, self.c, self.k, self.x, self.v, self.r, self.t0, self.dv, self.dt, self.F, self.gamma, self.rec \
             = m, c, k, x, v, r, t0, dv, dt, F, gamma, rec
-        self.contact = (self.r[0] + self.r[1] > self.x[1] - self.x[0])
+        self.contact = 0
+        self.up = 0
         if rec:
             self.info = {}
             self.info['t'] = [self.t0]
@@ -48,7 +49,7 @@ class envModel:
             self.c[1] = np.random.random_sample() * (top_c2 - low_c2) + low_c2
         self.set(c2=self.c[1])
         self.t0 = 0
-        self.contact = (self.r[0] + self.r[1] > self.x[1] - self.x[0])
+        self.contact = 0
         if rec:
             self.info = {}
             self.info['t'] = [self.t0]
@@ -63,8 +64,7 @@ class envModel:
         m, c, k, r, gamma, F = self.m, self.c, self.k, self.r, self.gamma, self.F
         x = xv[0:3]
         v = xv[3:6]
-        self.contact = (self.r[0] + self.r[1] > x[1] - x[0])
-        if self.contact:
+        if self.r[0] + self.r[1] > x[1] - x[0]:
             va = [v[0], v[1], v[2],
                   -(c[0] * (abs(v[0]) ** gamma) * np.sign(v[0]) - c[0] * (abs(v[1]) ** gamma) * np.sign(v[1])  +
                     k[0] * x[0] - k[0] * x[1] +
@@ -101,6 +101,11 @@ class envModel:
         tspan = np.linspace(self.t0,t,int(self.dt * 1e6 + 1))
         sol = odeint(self.func,self.x+self.v,tspan)
         xv = sol[-1].tolist()
+        if self.info['v'][-1][0] != xv[3] and self.up == 0:
+            self.contact += 1
+            self.up = 2
+        if self.up > 0:
+            self.up -= 1
         if self.rec:
             self.info['t'] += [t]
             self.info['x'] += [xv[0:3]]
@@ -121,7 +126,7 @@ class envModel:
 
 
 if __name__ == '__main__':
-    sample_num = 10
+    sample_num = 1
     for i in range(sample_num):
         print(i + 1,'/',sample_num)
         Env = envModel()
@@ -133,7 +138,11 @@ if __name__ == '__main__':
         v = np.array(Env.info['v'])
         t = np.array(Env.info['t'])
         r = np.array(Env.r)
-        plt.figure(2*i)
+        contact = np.array(Env.info['contact'])
+
+        figs = 3
+
+        plt.figure(figs*i)
         plt.plot(t, v[:, 0], 'r', label='v1')
         plt.plot(t, v[:, 1], 'g', label='v2')
         plt.plot(t, v[:, 2], 'b', label='v3')
@@ -141,10 +150,15 @@ if __name__ == '__main__':
         plt.grid()
         plt.legend()
 
-        plt.figure(2*i+1)
+        plt.figure(figs*i+1)
         plt.plot(t,x[:,1]-x[:,0]-r[0]-r[1], 'b', label='x2-x1-r2-r1')
         plt.xlabel('t')
         plt.grid()
         plt.legend()
 
+        plt.figure(figs*i+2)
+        plt.plot(t,contact, 'r', label='contact')
+        plt.xlabel('t')
+        plt.grid()
+        plt.legend()
     plt.show()
