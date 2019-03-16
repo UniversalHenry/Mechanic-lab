@@ -4,17 +4,20 @@ from torch.autograd import Variable
 import numpy as np
 from envModel import envModel
 from init_nn import weight_init
+import os
 import matplotlib.pyplot as plt
 
 torch.manual_seed(1)
 np.random.seed(1)
 
-EPOCH = 1000
+EPOCH = 200
 CONTACT_TIMES = 5
-EPOCH_SIZE = 1000
+EPOCH_SIZE = 500
 INPUT_SIZE = 8 # [x1,x2,x3,v1,v2,v3,c2,contact times]
 OUTPUT_SIZE = 30  # [m1,c1,k1] for 10 times
 LR = 0.01
+
+f = open("./rec_v1.txt", 'w+')
 
 # prepare predictor model
 class myPredictor(nn.Module):
@@ -49,6 +52,7 @@ class myPredictor(nn.Module):
 
 MP = myPredictor()
 print(MP)
+print(MP,file=f)
 optimizer = torch.optim.Adam(MP.parameters(), lr=LR)
 loss_func = nn.MSELoss()
 
@@ -81,12 +85,20 @@ for epoch in range(EPOCH):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        if step % 50 == 0:
+        if step % 10 == 0:
+            c = ((np.sum(nn.Hardtanh()(predition).tolist()[0][0:10]) / 10)+1) /2
+            k = ((np.sum(nn.Hardtanh()(predition).tolist()[0][10:20]) / 10)+1) /2
+            m = ((np.sum(nn.Hardtanh()(predition).tolist()[0][20:30]) / 10) + 1) / 2
+            print('----------------------------------------------------------------------')
             print('Epoch: ', epoch, '\t| step: ', step, '\t| train loss: %.4f' % loss.data[0])
-            print('c_rand groundtruth:%.4f\t|c_rand pred:%.4f' % (
-            Env.c_rand * 2 - 1, np.sum(nn.Hardtanh()(predition).tolist()[0][0:10]) / 10))
-            print('k_rand groundtruth:%.4f\t|k_rand pred:%.4f' % (
-            Env.k_rand * 2 - 1, np.sum(nn.Hardtanh()(predition).tolist()[0][10:20]) / 10))
-            print('m_rand groundtruth:%.4f\t|m_rand pred:%.4f' % (
-            Env.m_rand * 2 - 1, np.sum(nn.Hardtanh()(predition).tolist()[0][20:30]) / 10))
-    torch.save(MP, 'MP_epoch%d.pkl' % (epoch+1))
+            print('c_rand groundtruth:%.4f\t|c_rand pred:%.4f\t|c_rand error:%.4f' % (Env.c_rand, c, abs(Env.c_rand - c)))
+            print('k_rand groundtruth:%.4f\t|k_rand pred:%.4f\t|k_rand error:%.4f' % (Env.k_rand, k, abs(Env.k_rand - k)))
+            print('m_rand groundtruth:%.4f\t|m_rand pred:%.4f\t|m_rand error:%.4f' % (Env.m_rand, m, abs(Env.m_rand - m)))
+            print('----------------------------------------------------------------------',file=f)
+            print('Epoch: ', epoch, '\t| step: ', step, '\t| train loss: %.4f' % loss.data[0],file=f)
+            print('c_rand groundtruth:%.4f\t|c_rand pred:%.4f\t|c_rand error:%.4f' % (Env.c_rand, c, abs(Env.c_rand - c)),file=f)
+            print('k_rand groundtruth:%.4f\t|k_rand pred:%.4f\t|k_rand error:%.4f' % (Env.k_rand, k, abs(Env.k_rand - k)),file=f)
+            print('m_rand groundtruth:%.4f\t|m_rand pred:%.4f\t|m_rand error:%.4f' % (Env.m_rand, m, abs(Env.m_rand - m)),file=f)
+    if not os.path.exists('./MP_v1'):
+        os.mkdir('./MP_v1')
+    torch.save(MP, './MP_v1/MP_epoch%d_v1.pkl' % (epoch+1))

@@ -1,0 +1,6 @@
+myPredictor(
+  (rnn): LSTM(8, 256, num_layers=5, batch_first=True)
+  (output1): Linear(in_features=256, out_features=512, bias=True)
+  (output2): Linear(in_features=512, out_features=512, bias=True)
+  (output3): Linear(in_features=512, out_features=300, bias=True)
+)
