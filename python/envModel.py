@@ -5,11 +5,18 @@ from scipy.integrate import odeint
 np.random.seed(1)
 
 class envModel:
-    def __init__(self, m=[800.0, 10.0, 200.0], c=[10.0, 100.0], k=[1e10, 0.0],
+    def __init__(self, m=[800.0, 10.0, 200.0], c=[10.0, 100.0], k=[1e8, 0.0],
                  x=[0.0, 0.35, 1000.0], v=[10.0, 0.0, 0.0], F=0.0, rec=True,
-                 r=[0.25, 0.05, 0.15], t0=0.0, dv = 0, dt=1e-3, gamma=1.5):
-        self.m, self.c, self.k, self.x, self.v, self.r, self.t0, self.dv, self.dt, self.F, self.gamma, self.rec \
-            = m, c, k, x, v, r, t0, dv, dt, F, gamma, rec
+                 r=[0.25, 0.05, 0.15], t0=0.0, dv = 0, dt=1e-3):
+        self.m, self.c, self.k, self.x, self.v, self.r, self.t0, self.dv, self.dt, self.F, self.rec \
+            = m, c, k, x, v, r, t0, dv, dt, F, rec
+        self.top_m, self.low_m = 2000.0, 500.0
+        self.top_c1, self.low_c1 = 100.0, 10.0
+        self.top_c2, self.low_c2 = 1000.0, 100.0
+        self.top_k1, self.low_k1 = 1e10, 1e8
+        self.top_v, self.low_v = 10, 0.5
+        self.m_rand, self.k_rand, self.c_rand, self.v_rand = 0.5, 0.5, 0.5, 0.5
+        self.stop = 100000
         self.contact = 0
         self.up = 0
         if rec:
@@ -29,25 +36,25 @@ class envModel:
         self.dt = dt
         print('c:', self.c,'\t|','k:', self.k,'\t|','F:', self.F,'\t|','dt:', self.dt,'\t|','t:', self.t0)
 
-    def gen(self, c2 = True, rec = True):
+    def gen(self, p = True, stop = 100000, c2 = True, rec = True, k2 = 0.0, F = 0.0, dt = 1e-3):
+        self.stop = stop
         self.rec = rec
         self.dv = 0
-        top_m, low_m = 2000.0, 500.0
-        top_c1, low_c1 = 100.0, 10.0
-        top_c2, low_c2 = 1000.0, 100.0
-        top_k1, low_k1 = 1e12, 1e10
-        top_v, low_v = 10, 0.5
-        self.m[0] = np.random.random_sample() * (top_m - low_m) + low_m
+        self.m_rand = np.random.random_sample()
+        self.v_rand = np.random.random_sample()
+        self.c_rand = np.random.random_sample()
+        self.k_rand = np.random.random_sample()
+        self.m[0] = self.m_rand * (self.top_m - self.low_m) + self.low_m
         self.r[0] = self.r[2] * ((self.m[0] / self.m[2]) ** (1 / 3))
         self.x = [0.0, self.r[0]+ self.r[1], 1000.0]
-        self.v = [np.random.random_sample() * (top_v - low_v) + low_v, 0.0, 0.0]
-        print('New environment generated!')
-        print('m:', self.m, '\t|', 'r:', self.r, '\t|', 'x:', self.x, '\t|', 'v:', self.v, '\t|', 'rec:', self.rec, )
-        self.c[0] = np.random.random_sample() * (top_c1 - low_c1) + low_c1
-        self.k[0] = np.random.random_sample() * (top_k1 - low_k1) + low_k1
+        self.v = [self.v_rand * (self.top_v - self.low_v) + self.low_v, 0.0, 0.0]
+        self.c[0] = self.c_rand * (self.top_c1 - self.low_c1) + self.low_c1
+        self.k[0] = self.k_rand * (self.top_k1 - self.low_k1) + self.low_k1
         if c2:
-            self.c[1] = np.random.random_sample() * (top_c2 - low_c2) + low_c2
-        self.set(c2=self.c[1])
+            self.c[1] = np.random.random_sample() * (self.top_c2 - self.low_c2) + self.low_c2
+        self.k[1] = k2
+        self.F = F
+        self.dt = dt
         self.t0 = 0
         self.contact = 0
         if rec:
@@ -59,18 +66,22 @@ class envModel:
             self.info['a'] = [a[3:6]]
             self.info['c'] = [self.c]
             self.info['contact'] = [self.contact]
+        if p:
+            print('New environment generated!')
+            print('m:', self.m, '\t|', 'r:', self.r, '\t|', 'x:', self.x, '\t|', 'v:', self.v, '\t|', 'rec:', self.rec, )
+            print('c:', self.c, '\t|', 'k:', self.k, '\t|', 'F:', self.F, '\t|', 'dt:', self.dt, '\t|', 't:', self.t0)
 
     def func(self, xv, t):
-        m, c, k, r, gamma, F = self.m, self.c, self.k, self.r, self.gamma, self.F
+        m, c, k, r, F = self.m, self.c, self.k, self.r, self.F
         x = xv[0:3]
         v = xv[3:6]
         if self.r[0] + self.r[1] > x[1] - x[0]:
             va = [v[0], v[1], v[2],
-                  -(c[0] * (abs(v[0]) ** gamma) * np.sign(v[0]) - c[0] * (abs(v[1]) ** gamma) * np.sign(v[1])  +
+                  -(c[0] * (abs(v[0]) ** 1.5) * np.sign(v[0]) - c[0] * (abs(v[1]) ** 1.5) * np.sign(v[1])  +
                     k[0] * x[0] - k[0] * x[1] +
                     k[0] * r[0] + k[0] * r[1]
                     ) / m[0],
-                  -(-c[0] * (abs(v[0]) ** gamma) * np.sign(v[0]) + c[0] * (abs(v[1]) ** gamma) * np.sign(v[1])+
+                  -(-c[0] * (abs(v[0]) ** 1.5) * np.sign(v[0]) + c[0] * (abs(v[1]) ** 1.5) * np.sign(v[1])+
                     c[1] * v[1] - c[1] * v[2] +
                     -k[0] * x[0] + (k[0] + k[1]) * x[1] - k[1] * x[2] +
                     -k[0] * r[0] - (k[0] - k[1]) * r[1] + k[1] * r[2]
@@ -106,7 +117,7 @@ class envModel:
             self.up = 2
         if self.up > 0:
             self.up -= 1
-        if self.rec:
+        if self.rec and self.contact <= self.stop:
             self.info['t'] += [t]
             self.info['x'] += [xv[0:3]]
             self.info['v'] += [xv[3:6]]
@@ -119,18 +130,17 @@ class envModel:
         self.t0 = t
         self.dv += abs(self.info['v'][-1][0] - self.info['v'][-1][1])
         delay = 200
-        if self.info['v'].__len__() > delay:
+        if self.info['v'].__len__() > delay and self.contact <= self.stop:
             self.dv -= abs(self.info['v'][-delay][0] - self.info['v'][-delay][1])
             return self.dv > delay/100
-        return True
-
+        return self.contact <= self.stop
 
 if __name__ == '__main__':
     sample_num = 1
     for i in range(sample_num):
         print(i + 1,'/',sample_num)
         Env = envModel()
-        Env.gen()
+        Env.gen(stop=5)
         while True:
             if not Env.solve():
                 break
