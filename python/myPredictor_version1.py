@@ -13,7 +13,7 @@ np.random.seed(1)
 EPOCH = 200
 CONTACT_TIMES = 5
 EPOCH_SIZE = 500
-INPUT_SIZE = 8 # [x1,x2,x3,v1,v2,v3,c2,contact times]
+INPUT_SIZE = 8 # [x1,x2,x3,v1,v2,v3,c2,m1,m2,m3,contact times]
 OUTPUT_SIZE = 30  # [m1,c1,k1] for 10 times
 LR = 0.01
 

@@ -117,3 +117,8 @@ dmypy.json
 *.mat
 
 *.pkl
+*.txt
+python/rec_v2.txt
+*.txt
+python/rec_v2.txt
+python/rec_v3.txt
