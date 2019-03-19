@@ -23,6 +23,7 @@ f = open("./rec_v2.txt", 'w+')
 class myPredictor(nn.Module):
     def __init__(self):
         super(myPredictor, self).__init__()
+        self.input_bn = nn.BatchNorm1d(INPUT_SIZE)
         self.rnn = nn.LSTM(         # if use nn.RNN(), it hardly learns
             input_size=INPUT_SIZE,
             hidden_size=128,         # rnn hidden unit
@@ -40,6 +41,9 @@ class myPredictor(nn.Module):
         # r_out shape (batch, time_step, output_size)
         # h_n shape (n_layers, batch, hidden_size)
         # h_c shape (n_layers, batch, hidden_size)
+        x=x.permute(0,2,1)
+        x=self.input_bn(x)
+        x =x.permute(0, 2, 1)
         r_out, (h_n, h_c) = self.rnn(x, None)   # None represents zero initial hidden state
         # choose r_out at the last time step
         out = self.output1(r_out[:, -1, :])

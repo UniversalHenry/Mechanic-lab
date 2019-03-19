@@ -13,7 +13,7 @@ np.random.seed(1)
 EPOCH = 200
 CONTACT_TIMES = 5
 EPOCH_SIZE = 500
-INPUT_SIZE = 8 # [x1,x2,x3,v1,v2,v3,c2,contact times]
+INPUT_SIZE = 11 # [x1,x2,x3,v1,v2,v3,c2,contact times]
 OUTPUT_SIZE = 30  # [m1,c1,k1] for 10 binary digits
 LR = 0.01
 
@@ -23,7 +23,6 @@ f = open("./rec_v2.txt", 'w+')
 class myPredictor(nn.Module):
     def __init__(self):
         super(myPredictor, self).__init__()
-        self.input_bn = nn.BatchNorm1d(INPUT_SIZE)
         self.rnn = nn.LSTM(         # if use nn.RNN(), it hardly learns
             input_size=INPUT_SIZE,
             hidden_size=128,         # rnn hidden unit
@@ -41,9 +40,6 @@ class myPredictor(nn.Module):
         # r_out shape (batch, time_step, output_size)
         # h_n shape (n_layers, batch, hidden_size)
         # h_c shape (n_layers, batch, hidden_size)
-        x=x.permute(0,2,1)
-        x=self.input_bn(x)
-        x =x.permute(0, 2, 1)
         r_out, (h_n, h_c) = self.rnn(x, None)   # None represents zero initial hidden state
         # choose r_out at the last time step
         out = self.output1(r_out[:, -1, :])
@@ -70,8 +66,11 @@ def gen_data(p,stop):
     x = torch.tensor(Env.info['x'])
     v = torch.tensor(Env.info['v'])
     c = torch.tensor([[Env.c[1]] * x.shape[0]]).view(-1, 1)
+    c1 = torch.tensor([[Env.c[0]] * x.shape[0]]).view(-1, 1)
+    m1 = torch.tensor([[Env.m[0]] * x.shape[0]]).view(-1, 1)
+    k1 = torch.tensor([[Env.k[0]] * x.shape[0]]).view(-1, 1)
     contact = torch.FloatTensor([Env.info['contact']]).view(-1, 1)
-    condition = torch.cat((x, v, c, contact), 1)
+    condition = torch.cat((x, v, c, c1, m1, k1, contact), 1)
     condition = condition.view(1, condition.shape[0], condition.shape[1])
     c, k, m = Env.c_rand, Env.k_rand, Env.m_rand
     result = torch.zeros([1,OUTPUT_SIZE])

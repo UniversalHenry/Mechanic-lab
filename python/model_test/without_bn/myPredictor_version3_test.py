@@ -10,29 +10,29 @@ import matplotlib.pyplot as plt
 torch.manual_seed(1)
 np.random.seed(1)
 
-EPOCH = 200
+EPOCH = 100
 CONTACT_TIMES = 5
 EPOCH_SIZE = 500
-INPUT_SIZE = 8 # [x1,x2,x3,v1,v2,v3,c2,contact times]
-OUTPUT_SIZE = 30  # [m1,c1,k1] for 10 binary digits
+INPUT_SIZE = 11 # [x1,x2,x3,v1,v2,v3,c2,contact times]
+PRECISION = 100
+OUTPUT_SIZE = 3*PRECISION  # [m1,c1,k1] for 0.01 precision
 LR = 0.01
 
-f = open("./rec_v2.txt", 'w+')
+f = open("./rec_v3.txt", 'w+')
 
 # prepare predictor model
 class myPredictor(nn.Module):
     def __init__(self):
         super(myPredictor, self).__init__()
-        self.input_bn = nn.BatchNorm1d(INPUT_SIZE)
         self.rnn = nn.LSTM(         # if use nn.RNN(), it hardly learns
             input_size=INPUT_SIZE,
-            hidden_size=128,         # rnn hidden unit
-            num_layers=10,           # number of rnn layer
+            hidden_size=256,         # rnn hidden unit
+            num_layers=5,           # number of rnn layer
             batch_first=True,       # input & output will has batch size as 1s dimension. e.g. (batch, time_step, input_size)
         )
-        self.output1 = nn.Linear(128, 128)
-        self.output2 = nn.Linear(128, 256)
-        self.output3 = nn.Linear(256, OUTPUT_SIZE)
+        self.output1 = nn.Linear(256, 512)
+        self.output2 = nn.Linear(512, 512)
+        self.output3 = nn.Linear(512, OUTPUT_SIZE)
         for m in self.modules():
             weight_init(m)
 
@@ -41,9 +41,6 @@ class myPredictor(nn.Module):
         # r_out shape (batch, time_step, output_size)
         # h_n shape (n_layers, batch, hidden_size)
         # h_c shape (n_layers, batch, hidden_size)
-        x=x.permute(0,2,1)
-        x=self.input_bn(x)
-        x =x.permute(0, 2, 1)
         r_out, (h_n, h_c) = self.rnn(x, None)   # None represents zero initial hidden state
         # choose r_out at the last time step
         out = self.output1(r_out[:, -1, :])
@@ -70,24 +67,19 @@ def gen_data(p,stop):
     x = torch.tensor(Env.info['x'])
     v = torch.tensor(Env.info['v'])
     c = torch.tensor([[Env.c[1]] * x.shape[0]]).view(-1, 1)
+    c1 = torch.tensor([[Env.c[0]] * x.shape[0]]).view(-1, 1)
+    m1 = torch.tensor([[Env.m[0]] * x.shape[0]]).view(-1, 1)
+    k1 = torch.tensor([[Env.k[0]] * x.shape[0]]).view(-1, 1)
     contact = torch.FloatTensor([Env.info['contact']]).view(-1, 1)
-    condition = torch.cat((x, v, c, contact), 1)
+    condition = torch.cat((x, v, c, c1, m1, k1, contact), 1)
     condition = condition.view(1, condition.shape[0], condition.shape[1])
-    c, k, m = Env.c_rand, Env.k_rand, Env.m_rand
+    c = int(Env.c_rand*PRECISION)
+    k = int(Env.k_rand*PRECISION)
+    m = int(Env.m_rand*PRECISION)
     result = torch.zeros([1,OUTPUT_SIZE])
-    for i in range(int(OUTPUT_SIZE/3)):
-        c = c - int(c)
-        k = k - int(k)
-        m = m - int(m)
-        if c >= 0.5:
-            result[0][i] = 1.0
-        if k >= 0.5:
-            result[0][int(i+OUTPUT_SIZE/3)] = 1.0
-        if m >= 0.5:
-            result[0][int(i+OUTPUT_SIZE/3*2)] = 1.0
-        c *= 2
-        k *= 2
-        m *= 2
+    result[0][c] = 1.0
+    result[0][k + PRECISION] = 1.0
+    result[0][m + PRECISION*2] = 1.0
     result = 2 * result - 1         # cast to -1 to 1   PAY ATTENTION!!!
     condition = Variable(condition)
     result = Variable(result)
@@ -104,13 +96,12 @@ for epoch in range(EPOCH):
         loss.backward()
         optimizer.step()
         if step % 10 == 0:
-            p = (predition[0]>0).tolist()
-            x, c, k, m = 1.0,0.0,0.0,0.0
-            for i in range(int(OUTPUT_SIZE/3)):
-                x = x/2
-                c += float(p[i]) * x
-                k += float(p[int(OUTPUT_SIZE/3)+i]) * x
-                m += float(p[int(OUTPUT_SIZE/3)*2+i]) * x
+            _, c = torch.max(predition[0][0:PRECISION],0)
+            c = float(c) / 100
+            _, k = torch.max(predition[0][PRECISION:2*PRECISION], 0)
+            k = float(k) / 100
+            _, m = torch.max(predition[0][2*PRECISION:3 * PRECISION], 0)
+            m = float(m) / 100
             print('----------------------------------------------------------------------')
             print('Epoch: ', epoch, '\t| step: ', step, '\t| train loss: %.4f' % loss.data[0])
             print('c_rand groundtruth:%.4f\t|c_rand pred:%.4f\t|c_rand error:%.4f' % (Env.c_rand, c, abs(Env.c_rand - c)))
@@ -121,6 +112,6 @@ for epoch in range(EPOCH):
             print('c_rand groundtruth:%.4f\t|c_rand pred:%.4f\t|c_rand error:%.4f' % (Env.c_rand, c, abs(Env.c_rand - c)),file=f)
             print('k_rand groundtruth:%.4f\t|k_rand pred:%.4f\t|k_rand error:%.4f' % (Env.k_rand, k, abs(Env.k_rand - k)),file=f)
             print('m_rand groundtruth:%.4f\t|m_rand pred:%.4f\t|m_rand error:%.4f' % (Env.m_rand, m, abs(Env.m_rand - m)),file=f)
-    if not os.path.exists('./MP_v2'):
-        os.mkdir('./MP_v2')
-    torch.save(MP, './MP_v2/MP_epoch%d_v2.pkl' % (epoch+1))
+    if not os.path.exists('./MP_v3'):
+        os.mkdir('./MP_v3')
+    torch.save(MP, './MP_v3/MP_epoch%d_v3.pkl' % (epoch+1))
