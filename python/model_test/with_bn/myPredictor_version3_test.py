@@ -18,7 +18,10 @@ PRECISION = 100
 OUTPUT_SIZE = 3*PRECISION  # [m1,c1,k1] for 0.01 precision
 LR = 0.01
 
-f = open("./rec_v3.txt", 'w+')
+dataDir = './result1'
+if not os.path.exists(dataDir):
+    os.mkdir(dataDir)
+f = open(dataDir+'/rec_v3.txt', 'w+')
 
 # prepare predictor model
 class myPredictor(nn.Module):
@@ -95,7 +98,7 @@ for epoch in range(EPOCH):
     for step in range(EPOCH_SIZE):
         condition,result = gen_data(p=False,stop=CONTACT_TIMES)
         predition = MP(condition)
-        loss = loss_func(result, predition)
+        loss = loss_func(predition, result)
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -116,6 +119,6 @@ for epoch in range(EPOCH):
             print('c_rand groundtruth:%.4f\t|c_rand pred:%.4f\t|c_rand error:%.4f' % (Env.c_rand, c, abs(Env.c_rand - c)),file=f)
             print('k_rand groundtruth:%.4f\t|k_rand pred:%.4f\t|k_rand error:%.4f' % (Env.k_rand, k, abs(Env.k_rand - k)),file=f)
             print('m_rand groundtruth:%.4f\t|m_rand pred:%.4f\t|m_rand error:%.4f' % (Env.m_rand, m, abs(Env.m_rand - m)),file=f)
-    if not os.path.exists('./MP_v3'):
-        os.mkdir('./MP_v3')
-    torch.save(MP, './MP_v3/MP_epoch%d_v3.pkl' % (epoch+1))
+    if not os.path.exists(dataDir+'/MP_v3'):
+        os.mkdir(dataDir+'/MP_v3')
+    torch.save(MP, dataDir+'/MP_v3/MP_epoch%d_v3.pkl' % (epoch+1))

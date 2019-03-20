@@ -84,7 +84,7 @@ for epoch in range(EPOCH):
     for step in range(EPOCH_SIZE):
         condition,result = gen_data(p=False,stop=CONTACT_TIMES)
         predition = MP(condition)
-        loss = loss_func(result, predition)
+        loss = loss_func(predition, result)
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
