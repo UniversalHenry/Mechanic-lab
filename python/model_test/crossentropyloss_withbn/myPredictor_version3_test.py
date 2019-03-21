@@ -18,7 +18,7 @@ PRECISION = 1000
 OUTPUT_SIZE = PRECISION  # [m1] for 0.01 precision
 LR = 0.01
 
-dataDir = './result0'
+dataDir = './result1'
 if not os.path.exists(dataDir):
     os.mkdir(dataDir)
 f = open(dataDir+'/rec_v3.txt', 'w+')
